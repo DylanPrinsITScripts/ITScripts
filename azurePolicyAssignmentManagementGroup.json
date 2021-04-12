@@ -1,0 +1,113 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-08-01/managementGroupDeploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "name": {
+            "type": "string",
+            "metadata": {
+                "description": "The name of the Azure Policy assignment"
+            },
+            "maxLength": 24
+        },
+        "displayName": {
+            "type": "string",
+            "metadata": {
+                "description": "The diplay name of the Azure Policy assignment"
+            }
+        },
+        "description": {
+            "type": "string",
+            "metadata": {
+                "description": "The description of the Azure Policy assignment"
+            },
+            "defaultValue": ""
+        },
+        "targetMG": {
+            "type": "string",
+            "metadata": {
+                "description": "The scope the Azure Policy should be assigned to"
+            }
+        },
+        "notScopes": {
+            "type": "array",
+            "metadata": {
+                "description": "A list of exceptions to the scope"
+            },
+            "defaultValue": []
+        },
+        "policyAssignmentMode": {
+            "type": "string",
+            "metadata": {
+                "description": "The assignment mode for the Azure Policy"
+            },
+            "defaultValue": "Default"
+        },
+        "policyDefinitionId": {
+            "type": "string",
+            "metadata": {
+                "description": "The resource ID of the Azure Policy to be assigned"
+            }
+        },
+        "policyParameters": {
+            "type": "object",
+            "metadata": {
+                "description": "Object containing the parameters for the Azure Policy"
+            },
+            "defaultValue": {}
+        },
+        "metadata": {
+            "type": "object",
+            "metadata": {
+                "description": "Object containing the metadata for the Azure Policy Assignment"
+            },
+            "defaultValue": {}
+        },
+        "deployManagedIdentity": {
+            "type": "bool",
+            "metadata": {
+                "description": "Enables deployment of a Managed Identity"
+            },
+            "defaultValue": false
+        },
+        "managedIdentityLocation": {
+            "type": "string",
+            "metadata": {
+                "description": "Location of the Managed Identity"
+            },
+            "defaultValue": ""
+        }
+    },
+    "variables": {
+        "mgScope": "[tenantResourceId('Microsoft.Management/managementGroups', parameters('targetMG'))]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Authorization/policyAssignments",
+            "name": "[parameters('name')]",
+            "apiVersion": "2020-09-01",
+            "properties": {
+                "displayName": "[parameters('displayName')]",
+                "description": "[parameters('description')]",
+                "policyDefinitionId": "[parameters('policyDefinitionId')]",
+                "parameters": "[parameters('policyParameters')]",
+                "scope": "[variables('mgScope')]",
+                "notScopes": "[parameters('notScopes')]",
+                "enforcementMode": "[parameters('policyAssignmentMode')]",
+                "metadata": "[parameters('metadata')]"
+            },
+            "identity": "[if(parameters('deployManagedIdentity'), json('{\"type\": \"SystemAssigned\"}'), json('null'))]",
+            "location": "[parameters('managedIdentityLocation')]"
+        }
+    ],
+    "outputs": {
+        "azurePolicyAssignmentResourceId": {
+            "type": "string",
+            "value": "[resourceId('Microsoft.Authorization/policyAssignments', parameters('name'))]"
+        },
+        "assignmentManagedIdentityPrincipalId": {
+            "condition": "[parameters('deployManagedIdentity')]",
+            "type": "string",
+            "value": "[reference(resourceId('Microsoft.Authorization/policyAssignments', parameters('name')), '2020-09-01', 'Full').identity.principalId]"
+        }
+    }
+}
