@@ -1,0 +1,393 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "workspaceSubscriptionId": {
+      "type": "string"
+    },
+    "workspaceResourceGroup": {
+      "type": "string"
+    },
+    "workspaceName": {
+      "type": "string"
+    },
+    "postfix": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "This value will be added to the end of the name of all the resources in this template."
+      }
+    }
+  },
+  "variables": {
+    "postfix": "[if(equals('', parameters('postfix')), '', concat(' - ', parameters('postfix')))]"
+  },
+  "resources": [
+    {
+      "name": "[concat('CHC - Percentage CPU higher than normal', variables('postfix'))]",
+      "type": "Microsoft.Insights/metricAlerts",
+      "location": "global",
+      "apiVersion": "2018-03-01",
+      "tags": {},
+      "properties": {
+        "description": "The CPU Percentage is higher then expected.",
+        "severity": 3,
+        "enabled": true,
+        "scopes": [ "[concat('/subscriptions/', subscription().subscriptionId)]" ],
+        "targetResourceType": "Microsoft.Compute/virtualMachines",
+        "targetResourceRegion": "WestEurope",
+        "evaluationFrequency": "PT5M",
+        "windowSize": "PT5M",
+        "criteria": {
+          "odata.type": "Microsoft.Azure.Monitor.MultipleResourceMultipleMetricCriteria",
+          "allOf": [
+            {
+              "criterionType": "DynamicThresholdCriterion",
+              "name": "1st criterion",
+              "metricName": "Percentage CPU",
+              "dimensions": [],
+              "operator": "GreaterThan",
+              "alertSensitivity": "Medium",
+              "failingPeriods": {
+                "numberOfEvaluationPeriods": "4",
+                "minFailingPeriodsToAlert": "4"
+              },
+              "timeAggregation": "Average"
+            }
+          ]
+        },
+        "actions": [
+          {
+            "actionGroupId": "[resourceId('microsoft.insights/actionGroups', 'chc-monitor-ag')]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "[concat('CHC - Virtual machine heartbeat lost', variables('postfix'))]",
+      "type": "Microsoft.Insights/scheduledQueryRules",
+      "apiVersion": "2018-04-16",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "description": "",
+        "Enabled": "True",
+        "source": {
+          "query": "Heartbeat | summarize LastHeartbeat=max(TimeGenerated) by ResourceId, Resource | where LastHeartbeat < ago(15m)",
+          "dataSourceId": "[resourceId(parameters('workspaceSubscriptionId'), parameters('workspaceResourceGroup'), 'Microsoft.OperationalInsights/workspaces/', parameters('workspaceName'))]",
+          "queryType": "ResultCount"
+        },
+        "schedule": {
+          "frequencyInMinutes": 15,
+          "timeWindowInMinutes": 15
+        },
+        "action": {
+          "odata.type": "Microsoft.WindowsAzure.Management.Monitoring.Alerts.Models.Microsoft.AppInsights.Nexus.DataContracts.Resources.ScheduledQueryRules.AlertingAction",
+          "severity": 3,
+          "aznsAction": {
+            "actionGroup": [
+              "[resourceId('microsoft.insights/actionGroups', 'chc-monitor-ag')]"
+            ],
+            "throttlingInMin": 0,
+            "throttleConsecutiveWindowCount": 0,
+            "emailSubject": null,
+            "customWebhookPayload": null
+          },
+          "trigger": {
+            "thresholdOperator": "GreaterThan",
+            "threshold": "0"
+          }
+        }
+      }
+    },
+    {
+      "type": "microsoft.insights/activityLogAlerts",
+      "apiVersion": "2017-04-01",
+      "name": "[concat('CHC - A administrative operation has been performed on a Virtual Machine', variables('postfix'))]",
+      "location": "Global",
+      "properties": {
+        "scopes": [
+          "[concat('/subscriptions/', subscription().subscriptionId)]"
+        ],
+        "condition": {
+          "allOf": [
+            {
+              "field": "category",
+              "equals": "Administrative"
+            },
+            {
+              "field": "resourceType",
+              "equals": "microsoft.compute/virtualmachines"
+            }
+          ]
+        },
+        "actions": {
+          "actionGroups": [
+            {
+              "actionGroupId": "[resourceId('microsoft.insights/actionGroups', 'chc-monitor-ag')]",
+              "webhookProperties": {}
+            }
+          ]
+        },
+        "enabled": false
+      }
+    },
+    {
+      "name": "[concat('CHC - A Update failed to install',variables('postfix'))]",
+      "type": "Microsoft.Insights/scheduledQueryRules",
+      "apiVersion": "2018-04-16",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "description": "",
+        "Enabled": "True",
+        "source": {
+          "query": "UpdateRunProgress | where InstallationStatus == 'Install Failed' or InstallationStatus == 'Download Failed' | summarize by Computer, ResourceId, SubscriptionId",
+          "dataSourceId": "[resourceId(parameters('workspaceSubscriptionId'), parameters('workspaceResourceGroup'), 'Microsoft.OperationalInsights/workspaces', parameters('workspaceName'))]",
+          "queryType": "ResultCount"
+        },
+        "schedule": {
+          "frequencyInMinutes": 120,
+          "timeWindowInMinutes": 120
+        },
+        "action": {
+          "odata.type": "Microsoft.WindowsAzure.Management.Monitoring.Alerts.Models.Microsoft.AppInsights.Nexus.DataContracts.Resources.ScheduledQueryRules.AlertingAction",
+          "severity": 3,
+          "aznsAction": {
+            "actionGroup": [
+              "[resourceId('microsoft.insights/actionGroups', 'chc-monitor-ag')]"
+            ],
+            "throttlingInMin": 0,
+            "throttleConsecutiveWindowCount": 0,
+            "emailSubject": null,
+            "customWebhookPayload": null
+          },
+          "trigger": {
+            "thresholdOperator": "GreaterThan",
+            "threshold": "0"
+          }
+        }
+      }
+    },
+    {
+      "name": "[concat('CHC - Server is running out of disk space - 10 percent', variables('postfix'))]",
+      "type": "Microsoft.Insights/scheduledQueryRules",
+      "apiVersion": "2018-04-16",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "description": "",
+        "Enabled": "False",
+        "source": {
+          "query": "Perf | where ObjectName == 'LogicalDisk' and CounterName == '% Free Space' | summarize FreeSpace = min(CounterValue) by Computer, InstanceName, _ResourceId | where strlen(InstanceName) ==2 and InstanceName contains ':' | where FreeSpace < 10 | sort by FreeSpace asc",
+          "dataSourceId": "[resourceId(parameters('workspaceSubscriptionId'), parameters('workspaceResourceGroup'), 'Microsoft.OperationalInsights/workspaces', parameters('workspaceName'))]",
+          "queryType": "ResultCount"
+        },
+        "schedule": {
+          "frequencyInMinutes": 240,
+          "timeWindowInMinutes": 240
+        },
+        "action": {
+          "odata.type": "Microsoft.WindowsAzure.Management.Monitoring.Alerts.Models.Microsoft.AppInsights.Nexus.DataContracts.Resources.ScheduledQueryRules.AlertingAction",
+          "severity": 3,
+          "aznsAction": {
+            "actionGroup": [
+              "[resourceId('microsoft.insights/actionGroups', 'chc-monitor-ag')]"
+            ],
+            "throttlingInMin": 0,
+            "throttleConsecutiveWindowCount": 0,
+            "emailSubject": null,
+            "customWebhookPayload": null
+          },
+          "trigger": {
+            "thresholdOperator": "GreaterThan",
+            "threshold": "0"
+          }
+        }
+      }
+    },
+    {
+      "name": "[concat('CHC - Server is running out of disk space', variables('postfix'))]",
+      "type": "Microsoft.Insights/scheduledQueryRules",
+      "apiVersion": "2018-04-16",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "description": "",
+        "Enabled": "True",
+        "source": {
+          "query": "InsightsMetrics | where Origin == 'vm.azm.ms' | where Namespace == 'LogicalDisk' and Name == 'FreeSpaceMB' | extend Disk=tostring(todynamic(Tags)['vm.azm.ms/mountId']) | extend DiskSizeMB=toint(todynamic(Tags)['vm.azm.ms/diskSizeMB']) | extend FreespaceMB=Val | extend DiskFreespacePercentage= FreespaceMB / DiskSizeMB * 100 | where FreespaceMB < 50000 | summarize DiskFreespacePercentage = avg(DiskFreespacePercentage) by Computer, _ResourceId, Disk | where DiskFreespacePercentage < 10",
+          "dataSourceId": "[resourceId(parameters('workspaceSubscriptionId'), parameters('workspaceResourceGroup'), 'Microsoft.OperationalInsights/workspaces', parameters('workspaceName'))]",
+          "queryType": "ResultCount"
+        },
+        "schedule": {
+          "frequencyInMinutes": 240,
+          "timeWindowInMinutes": 240
+        },
+        "action": {
+          "odata.type": "Microsoft.WindowsAzure.Management.Monitoring.Alerts.Models.Microsoft.AppInsights.Nexus.DataContracts.Resources.ScheduledQueryRules.AlertingAction",
+          "severity": 3,
+          "aznsAction": {
+            "actionGroup": [
+              "[resourceId('microsoft.insights/actionGroups', 'chc-monitor-ag')]"
+            ],
+            "throttlingInMin": 0,
+            "throttleConsecutiveWindowCount": 0,
+            "emailSubject": null,
+            "customWebhookPayload": null
+          },
+          "trigger": {
+            "thresholdOperator": "GreaterThan",
+            "threshold": "0"
+          }
+        }
+      }
+    },
+    {
+      "name": "[concat('CHC - Memory usage too high', variables('postfix'))]",
+      "type": "Microsoft.Insights/scheduledQueryRules",
+      "apiVersion": "2018-04-16",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "description": "",
+        "enabled": "False",
+        "source": {
+          "query": "Perf | where ObjectName == 'Memory' | where CounterName == '% Available Memory' or CounterName == '% Committed Bytes In Use' | summarize AggregatedValue = avg(CounterValue) by _ResourceId, bin(TimeGenerated, 15m) | where _ResourceId != ''",
+          "dataSourceId": "[resourceId(parameters('workspaceSubscriptionId'), parameters('workspaceResourceGroup'), 'Microsoft.OperationalInsights/workspaces', parameters('workspaceName'))]",
+          "queryType": "ResultCount"
+        },
+        "schedule": {
+          "frequencyInMinutes": 15,
+          "timeWindowInMinutes": 45
+        },
+        "action": {
+          "odata.type": "Microsoft.WindowsAzure.Management.Monitoring.Alerts.Models.Microsoft.AppInsights.Nexus.DataContracts.Resources.ScheduledQueryRules.AlertingAction",
+          "severity": 3,
+          "throttlingInMin": 0,
+          "throttleConsecutiveWindowCount": 0,
+          "aznsAction": {
+            "actionGroup": [
+              "[resourceId('microsoft.insights/actionGroups', 'chc-monitor-ag')]"
+            ],
+            "emailSubject": null,
+            "customWebhookPayload": null
+          },
+          "trigger": {
+            "thresholdOperator": "GreaterThan",
+            "threshold": "85",
+            "metricTrigger": {
+              "thresholdOperator": "GreaterThan",
+              "threshold": "2",
+              "metricColumn": "AggregatedValue",
+              "metricTriggerType": "Consecutive"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "[concat('CHC - Memory usage percentage higher than 90',variables('postfix'))]",
+      "type": "Microsoft.Insights/scheduledQueryRules",
+      "apiVersion": "2018-04-16",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "description": "",
+        "Enabled": "True",
+        "source": {
+          "query": "Perf | where ObjectName == 'Memory' | where CounterName == '% Available Memory' or CounterName == '% Committed Bytes In Use' | summarize AggregatedValue = avg(CounterValue) by _ResourceId, bin(TimeGenerated, 15m) | where AggregatedValue > 90",
+          "dataSourceId": "[resourceId(parameters('workspaceSubscriptionId'), parameters('workspaceResourceGroup'), 'Microsoft.OperationalInsights/workspaces', parameters('workspaceName'))]",
+          "queryType": "ResultCount"
+        },
+        "schedule": {
+          "frequencyInMinutes": 60,
+          "timeWindowInMinutes": 60
+        },
+        "action": {
+          "odata.type": "Microsoft.WindowsAzure.Management.Monitoring.Alerts.Models.Microsoft.AppInsights.Nexus.DataContracts.Resources.ScheduledQueryRules.AlertingAction",
+          "severity": 3,
+          "aznsAction": {
+            "actionGroup": [
+              "[resourceId('microsoft.insights/actionGroups', 'chc-monitor-ag')]"
+            ],
+            "throttlingInMin": 0,
+            "throttleConsecutiveWindowCount": 0,
+            "emailSubject": null,
+            "customWebhookPayload": null
+          },
+          "trigger": {
+            "thresholdOperator": "GreaterThan",
+            "threshold": "0"
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Insights/activityLogAlerts",
+      "apiVersion": "2017-04-01",
+      "name": "[concat('CHC - Virtual Machine is in a unhealty Resource Health state',variables('postfix'))]",
+      "location": "Global",
+      "properties": {
+        "enabled": true,
+        "scopes": [
+          "[subscription().id]"
+        ],
+        "condition": {
+          "allOf": [
+            {
+              "field": "category",
+              "equals": "ResourceHealth"
+            },
+            {
+              "anyOf": [
+                {
+                  "field": "resourceType",
+                  "equals": "Microsoft.Compute/virtualMachines"
+                }
+              ]
+            },
+            {
+              "anyOf": [
+                {
+                  "field": "properties.currentHealthStatus",
+                  "equals": "Degraded"
+                },
+                {
+                  "field": "properties.currentHealthStatus",
+                  "equals": "Unavailable"
+                },
+                {
+                  "field": "properties.currentHealthStatus",
+                  "equals": "Unknown"
+                }
+              ]
+            },
+            {
+              "anyOf": [
+                {
+                  "field": "status",
+                  "equals": "Active"
+                }
+              ]
+            },
+            {
+              "anyOf": [
+                {
+                  "field": "properties.cause",
+                  "equals": "PlatformInitiated"
+                },
+                {
+                  "field": "properties.cause",
+                  "equals": "Unknown"
+                }
+              ]
+            }
+          ]
+        },
+        "actions": {
+          "actionGroups": [
+            {
+              "actionGroupId": "[resourceId('microsoft.insights/actionGroups', 'chc-monitor-ag')]"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "outputs": {}
+}

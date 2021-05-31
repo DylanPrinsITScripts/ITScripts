@@ -1,0 +1,18 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "workspaceSubscriptionId": {
+      "value": "372ff4eb-841d-4efa-af11-f057c9460c0d"
+    },
+    "workspaceResourceGroup": {
+      "value": "RG-Dylan"
+    },
+    "workspaceName": {
+      "value": "dylantest"
+    },
+    "postfix": {
+      "value": ""
+    }
+  }
+}
