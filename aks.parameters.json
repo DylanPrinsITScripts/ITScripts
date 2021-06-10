@@ -1,0 +1,111 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "applicationName": {
+      "value": "blue"
+    },
+    "dtapName": {
+      "value": "t"
+    },
+    "regionName": {
+      "value": "euw"
+    },
+    "kubernetesVersion": {
+      "value": "1.19.11"
+    },
+    "dnsPrefix": {
+      "value": "aks"
+    },
+    "agentPools": {
+      "value": [
+        {
+          "count": 1,
+          "vmSize": "Standard_DS2_v2",
+          "osDiskSizeGB": 50,
+          "vnetSubnetID": "/subscriptions/372ff4eb-841d-4efa-af11-f057c9460c0d/resourceGroups/RG-Dylan/providers/Microsoft.Network/virtualNetworks/RG-Dylan-vnet/subnets/default",
+          "maxPods": 30,
+          "osType": "",
+          "maxCount": 2,
+          "minCount": 1,
+          "enableAutoScaling": true,
+          "type": "VirtualMachineScaleSets",
+          "mode": "System",
+          "upgradeSettings": {
+            "maxSurge": ""
+          },
+          "availabilityZones": [
+            "1",
+            "2",
+            "3"
+          ],
+          "enableNodePublicIP": true,
+          "spotMaxPrice": 100,
+          "nodeTaints": [
+            ""
+          ],
+          "name": "default"
+        }
+      ]
+    },
+    "logAnalyticsWorkspaceId": {
+      "value": "/subscriptions/372ff4eb-841d-4efa-af11-f057c9460c0d/resourcegroups/rg-dylan/providers/microsoft.operationalinsights/workspaces/dylantest"
+    },
+    "enableAKSPolicy": {
+      "value": true
+    },
+    "nodeResourceGroup": {
+      "value": "RG-Dylan-AKS-Cluster"
+    },
+    "enableRBAC": {
+      "value": true
+    },
+    "enablePodSecurityPolicy": {
+      "value": false
+    },
+    "networkProfile": {
+      "value": {
+        "networkPlugin": "azure",
+        "networkPolicy": "azure",
+        "podCidr": "",
+        "serviceCidr": "10.0.0.0/16",
+        "dnsServiceIP": "10.0.0.10",
+        "dockerBridgeCidr": "172.17.0.1/16",
+        "outboundType": "loadBalancer",
+        "loadBalancerSku": "standard",
+        "loadBalancerProfile": {
+          "managedOutboundIPs": {
+            "count": 3
+          },
+          "idleTimeoutInMinutes": 10
+        }
+      }
+    },
+    "aadProfile": {
+      "value": {
+        "managed": true,
+        "enableAzureRBAC": true,
+        "adminGroupObjectIDs": [
+          "cba31ac4-2fac-427c-bac4-e4f385f492ee"
+        ],
+        "ingressApplicationGateway": {
+              "enabled": false,
+              "config": {
+                  "applicationGatewayId": "/subscriptions/372ff4eb-841d-4efa-af11-f057c9460c0d/resourceGroups/RG-Dylan/providers/Microsoft.Network/applicationGateways/dylanGateway2"
+              }
+          }
+      }
+    },
+    "apiServerAccessProfile": {
+      "value": {
+        "enablePrivateCluster": false
+      }
+    },
+    "containerRegistryId": {
+      "value": "/subscriptions/372ff4eb-841d-4efa-af11-f057c9460c0d/resourceGroups/RG-Dylan/providers/Microsoft.ContainerRegistry/registries/dylantest"
+    },
+    "diagnosticsRetentionPeriod": {
+      "value": 8
+    }
+  }
+}

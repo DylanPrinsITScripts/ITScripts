@@ -1,0 +1,426 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "applicationName": {
+            "type": "string",
+            "metadata": {
+                "description": "The code of the application this resource will be used for"
+            },
+            "maxLength": 4
+        },
+        "dtapName": {
+            "type": "string",
+            "metadata": {
+                "description": "The code of the environment this resource will be used in"
+            },
+            "maxLength": 1
+        },
+        "regionName": {
+            "type": "string",
+            "metadata": {
+                "description": "The region this resource will be deployed in"
+            },
+            "maxLength": 3
+        },
+        "customName": {
+            "type": "string",
+            "metadata": {
+                "description": "The name to use if not using the normal naming convention"
+            },
+            "defaultValue": ""
+        },
+        "commonTags": {
+            "type": "object",
+            "metadata": {
+                "description": "Object containing the tags to apply to all resources"
+            },
+            "defaultValue": {}
+        },
+        "kubernetesVersion": {
+            "type": "string",
+            "metadata": {
+                "description": "Version of Kubernetes specified when creating the managed cluster"
+            }
+        },
+        "dnsPrefix": {
+            "type": "string",
+            "metadata": {
+                "description": "DNS prefix specified when creating the managed cluster"
+            }
+        },
+        "agentPools": {
+            "type": "array",
+            "metadata": {
+                "description": "Properties of the agent pools"
+            }
+        },
+        "linuxProfile": {
+            "type": "object",
+            "metadata": {
+                "description": "Profile for Linux VMs in the container service cluster"
+            },
+            "defaultValue": {}
+        },
+        "windowsProfile": {
+            "type": "object",
+            "metadata": {
+                "description": "Profile for Windows VMs in the container service cluster"
+            },
+            "defaultValue": {}
+        },
+        "logAnalyticsWorkspaceId": {
+            "type": "string",
+            "metadata": {
+                "description": "The resource Id of the log analytics workspace that will monitor the cluster"
+            }
+        },
+        "enableAKSPolicy": {
+            "type": "bool",
+            "metadata": {
+                "description": "Whether or not to enable the AKS Policy add-on"
+            },
+            "defaultValue": true
+        },
+        "nodeResourceGroup": {
+            "type": "string",
+            "metadata": {
+                "description": "Name of the resource group containing agent pool nodes"
+            }
+        },
+        "enableRBAC": {
+            "type": "bool",
+            "metadata": {
+                "description": "Whether to enable Kubernetes Role-Based Access Control"
+            },
+            "defaultValue": true
+        },
+        "enablePodSecurityPolicy": {
+            "type": "bool",
+            "metadata": {
+                "description": "Whether to enable Kubernetes pod security policy"
+            },
+            "defaultValue": true
+        },
+        "networkProfile": {
+            "type": "object",
+            "metadata": {
+                "description": "Profile of network configuration"
+            }
+        },
+        "aadProfile": {
+            "type": "object",
+            "metadata": {
+                "description": "Profile of Azure Active Directory configuration"
+            },
+            "defaultValue": {}
+        },
+        "autoScalerProfile": {
+            "type": "object",
+            "metadata": {
+                "description": "Parameters to be applied to the cluster-autoscaler when enabled"
+            },
+            "defaultValue": {}
+        },
+        "addonProfiles": {
+            "type": "object",
+            "metadata": {
+                "description": "Profile of managed cluster add-ons"
+            },
+            "defaultValue": {}
+        },
+        "apiServerAccessProfile": {
+            "type": "object",
+            "metadata": {
+                "description": "Access profile for managed cluster API server"
+            },
+            "defaultValue": {}
+        },
+        "diskEncryptionSetId": {
+            "type": "string",
+            "metadata": {
+                "description": "ResourceId of the disk encryption set to use for enabling encryption at rest"
+            },
+            "defaultValue": ""
+        },
+        "containerRegistryId": {
+            "type": "string",
+            "metadata": {
+                "description": "The resource Id of the container registry this cluster should use"
+            },
+            "defaultValue": ""
+        },
+        "diagnosticsRetentionPeriod": {
+            "type": "int",
+            "metadata": {
+                "description": "The humber of days to keep the diagnostic logging"
+            },
+            "defaultValue": 14
+        }
+    },
+    "variables": {
+        "clusterName": "[if(empty(parameters('customName')), toLower(concat(parameters('applicationName'), '-', parameters('regionName'), '-aks-', parameters('dtapName'))), parameters('customName'))]",
+        "agentPoolIdentity": "[toLower(concat(parameters('applicationName'), '-', parameters('regionName'), '-aks-', parameters('dtapName'), '-agentpool'))]",
+        "mandatoryAddOnProfile": {
+            "kubeDashboard": {
+                "enabled": false
+            },
+            "omsagent": {
+                "enabled": true,
+                "config": {
+                    "logAnalyticsWorkspaceResourceID": "[parameters('logAnalyticsWorkspaceId')]"
+                }
+            },
+            "azurepolicy": {
+                "enabled": "[parameters('enableAKSPolicy')]",
+                "config": {
+                    "version": "v2"
+                }
+            }
+        },
+        "addOnProfiles": "[union(variables('mandatoryAddOnProfile'), parameters('addonProfiles'))]"
+    },
+    "resources": [
+        {
+            "name": "[variables('clusterName')]",
+            "type": "Microsoft.ContainerService/managedClusters",
+            "apiVersion": "2020-07-01",
+            "location": "[resourceGroup().location]",
+            "tags": "[parameters('commonTags')]",
+            "properties": {
+                "kubernetesVersion": "[parameters('kubernetesVersion')]",
+                "dnsPrefix": "[parameters('dnsPrefix')]",
+                "agentPoolProfiles": "[parameters('agentPools')]",
+                "linuxProfile": "[if(empty(parameters('linuxProfile')), json('null'), parameters('linuxProfile'))]",
+                "windowsProfile": "[if(empty(parameters('windowsProfile')), json('null'), parameters('windowsProfile'))]",
+                "addonProfiles": "[variables('addonProfiles')]",
+                "nodeResourceGroup": "[parameters('nodeResourceGroup')]",
+                "enableRBAC": "[parameters('enableRBAC')]",
+                "enablePodSecurityPolicy": "[parameters('enablePodSecurityPolicy')]",
+                "networkProfile": "[parameters('networkProfile')]",
+                "aadProfile": "[if(empty(parameters('aadProfile')), json('null'), parameters('aadProfile'))]",
+                "autoScalerProfile": "[parameters('autoScalerProfile')]",
+                "apiServerAccessProfile": "[parameters('apiServerAccessProfile')]",
+                "diskEncryptionSetID": "[if(empty(parameters('diskEncryptionSetID')), json('null'), parameters('diskEncryptionSetID'))]"
+            },
+            "identity": {
+                "type": "SystemAssigned"
+            },
+            "sku": {
+                "name": "Basic",
+                "tier": "[if(parameters('apiServerAccessProfile').enablePrivateCluster, 'Free', 'Paid')]"
+            },
+            "resources": [
+                {
+                    "type": "providers/diagnosticSettings",
+                    "name": "Microsoft.Insights/AKSDiagnostics",
+                    "apiVersion": "2017-05-01-preview",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.ContainerService/managedClusters', variables('ClusterName'))]"
+                    ],
+                    "properties": {
+                        "name": "[variables('clusterName')]",
+                        "workspaceId": "[parameters('logAnalyticsWorkspaceId')]",
+                        "logs": [
+                            {
+                                "category": "kube-apiserver",
+                                "enabled": true,
+                                "retentionPolicy": {
+                                    "days": "[parameters('diagnosticsRetentionPeriod')]",
+                                    "enabled": true
+                                }
+                            },
+                            {
+                                "category": "kube-audit",
+                                "enabled": true,
+                                "retentionPolicy": {
+                                    "days": "[parameters('diagnosticsRetentionPeriod')]",
+                                    "enabled": true
+                                }
+                            },
+                            {
+                                "category": "kube-controller-manager",
+                                "enabled": true,
+                                "retentionPolicy": {
+                                    "days": "[parameters('diagnosticsRetentionPeriod')]",
+                                    "enabled": true
+                                }
+                            },
+                            {
+                                "category": "kube-scheduler",
+                                "enabled": true,
+                                "retentionPolicy": {
+                                    "days": "[parameters('diagnosticsRetentionPeriod')]",
+                                    "enabled": true
+                                }
+                            },
+                            {
+                                "category": "cluster-autoscaler",
+                                "enabled": true,
+                                "retentionPolicy": {
+                                    "days": "[parameters('diagnosticsRetentionPeriod')]",
+                                    "enabled": true
+                                }
+                            }
+                        ],
+                        "metrics": [
+                            {
+                                "category": "AllMetrics",
+                                "enabled": true,
+                                "retentionPolicy": {
+                                    "days": "[parameters('diagnosticsRetentionPeriod')]",
+                                    "enabled": true
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "[concat(variables('clusterName'), '/Microsoft.Authorization/', guid(resourceGroup().id, variables('clusterName'), 'Monitoring Metrics Publisher'))]",
+            "type": "Microsoft.ContainerService/managedClusters/providers/roleAssignments",
+            "apiVersion": "2020-04-01-preview",
+            "dependsOn": [
+                "[concat('Microsoft.ContainerService/managedClusters/', variables('clusterName'))]"
+            ],
+            "properties": {
+                "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', '3913510d-42f4-4e42-8a64-420c390055eb')]",
+                "principalId": "[reference(concat('Microsoft.ContainerService/managedClusters/', variables('clusterName')), '2020-04-01').addonProfiles.omsagent.identity.objectId]",
+                "scope": "[resourceId('Microsoft.ContainerService/managedClusters/', variables('clusterName'))]"
+            }
+        },
+        {
+            "name": "[concat(variables('clusterName'), '-vnet-subnet-rbac', copyIndex('rbacLoop', 1))]",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2020-06-01",
+            "copy": {
+                "name": "rbacLoop",
+                "count": "[length(parameters('agentPools'))]"
+            },
+            "resourceGroup": "[split(parameters('agentPools')[copyIndex('rbacLoop')].vnetSubnetId, '/')[4]]",
+            "dependsOn": [
+                "[concat('Microsoft.ContainerService/managedClusters/', variables('clusterName'))]"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {},
+                    "variables": {},
+                    "resources": [
+                        {
+                            "name": "[concat(split(parameters('agentPools')[copyIndex('rbacLoop')].vnetSubnetId, '/')[8], '/', split(parameters('agentPools')[copyIndex('rbacLoop')].vnetSubnetId, '/')[10], '/Microsoft.Authorization/', guid(resourceGroup().id, parameters('agentPools')[copyIndex('rbacLoop')].vnetSubnetId, 'Network Contributor'))]",
+                            "type": "Microsoft.Network/virtualNetworks/subnets/providers/roleAssignments",
+                            "apiVersion": "2020-04-01-preview",
+                            "properties": {
+                                "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', '4d97b98b-1d4f-4787-a291-c67834d212e7')]",
+                                "principalId": "[reference(concat('Microsoft.ContainerService/managedClusters/', variables('clusterName')), '2020-04-01', 'Full').identity.principalId]",
+                                "scope": "[parameters('agentPools')[copyIndex('rbacLoop')].vnetSubnetId]"
+                            }
+                        }
+                    ],
+                    "outputs": {}
+                }
+            }
+        },
+        {
+            "name": "[concat(variables('clusterName'), '-acr-rbac')]",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2020-06-01",
+            "resourceGroup": "[split(parameters('containerRegistryId'), '/')[4]]",
+            "dependsOn": [
+                "[concat('Microsoft.ContainerService/managedClusters/', variables('clusterName'))]"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {},
+                    "variables": {},
+                    "resources": [
+                        {
+                            "name": "[concat(split(parameters('containerRegistryId'), '/')[8], '/Microsoft.Authorization/', guid(resourceGroup().id, parameters('containerRegistryId'), 'AcrPull'))]",
+                            "type": "Microsoft.ContainerRegistry/registries/providers/roleAssignments",
+                            "apiVersion": "2020-04-01-preview",
+                            "properties": {
+                                "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')]",
+                                "principalId": "[reference(concat('Microsoft.ContainerService/managedClusters/', variables('clusterName')), '2020-04-01').identityProfile.kubeletidentity.objectId]",
+                                "scope": "[parameters('containerRegistryId')]"
+                            }
+                        }
+                    ],
+                    "outputs": {}
+                }
+            }
+        },
+        {
+            "name": "[concat(variables('agentPoolIdentity'), '-vmc-rbac')]",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2020-06-01",
+            "resourceGroup": "[parameters('nodeResourceGroup')]",
+            "properties": {
+                "mode": "Incremental",
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {},
+                    "variables": {},
+                    "resources": [
+                        {
+                            "name": "[concat(guid(subscription().id, parameters('nodeResourceGroup'), variables('agentPoolIdentity'), 'vmss-rbac'))]",
+                            "type": "Microsoft.Authorization/roleAssignments",
+                            "apiVersion": "2020-03-01-preview",
+                            "properties": {
+                                "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', '9980e02c-c2be-4d73-94e8-173b1dc7cf3c')]",
+                                "principalId": "[reference(concat('Microsoft.ContainerService/managedClusters/', variables('clusterName')), '2020-04-01').identityProfile.kubeletidentity.objectId]",
+                                "scope": "[concat(subscription().id, '/resourceGroups/', parameters('nodeResourceGroup'))]"
+                            }
+                        }
+                    ],
+                    "outputs": {}
+                }
+            }
+        },
+        {
+            "name": "[concat(variables('agentPoolIdentity'), '-mio-rbac')]",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2020-06-01",
+            "resourceGroup": "[parameters('nodeResourceGroup')]",
+            "properties": {
+                "mode": "Incremental",
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {},
+                    "variables": {},
+                    "resources": [
+                        {
+                            "name": "[concat(guid(subscription().id, parameters('nodeResourceGroup'), variables('agentPoolIdentity'), 'mio-rbac'))]",
+                            "type": "Microsoft.Authorization/roleAssignments",
+                            "apiVersion": "2020-03-01-preview",
+                            "properties": {
+                                "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', 'f1a07417-d97a-45cb-824c-7a7467783830')]",
+                                "principalId": "[reference(concat('Microsoft.ContainerService/managedClusters/', variables('clusterName')), '2020-04-01').identityProfile.kubeletidentity.objectId]",
+                                "scope": "[concat(subscription().id, '/resourceGroups/', parameters('nodeResourceGroup'))]"
+                            }
+                        }
+                    ],
+                    "outputs": {}
+                }
+            }
+        }
+    ],
+    "outputs": {
+        "clusterName": {
+            "type": "string",
+            "value": "[variables('clusterName')]"
+        },
+        "clusterResourceId": {
+            "type": "string",
+            "value": "[resourceId('Microsoft.ContainerService/managedClusters', variables('clusterName'))]"
+        }
+    }
+}
