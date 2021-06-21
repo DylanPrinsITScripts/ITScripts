@@ -1,0 +1,74 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "apiManagementServiceResourceId": {
+      "type": "array",
+      "metadata": {
+        "description": "Full Resource ID. For example /subscriptions/00000000-0000-0000-0000-0000-00000000/resourceGroups/ResourceGroupName/providers/Microsoft.Namespace/Resourcetype/Resourcename"
+      }
+    },
+    "postfix": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "This value will be added to the end of the name of all the resources in this template."
+      }
+    }
+  },
+  "variables": {
+    "postfix": "[if(equals('', parameters('postfix')), '', concat(' - ', parameters('postfix')))]"
+  },
+  "resources": [
+    {
+      "name": "[concat('CHC - API Management service capacity exceeded the threshold', variables('postfix'), ' - ', last(split(parameters('apiManagementServiceResourceId')[copyIndex('apim')], '/')))]",
+      "type": "microsoft.insights/metricAlerts",
+      "apiVersion": "2018-03-01",
+      "location": "global",
+      "copy": {
+        "name": "apim",
+        "count": "[length(parameters('apiManagementServiceResourceId'))]"
+      },
+      "properties": {
+        "description": "API Management service capacity exceeded the threshold.",
+        "severity": 3,
+        "scopes": [
+          "[parameters('apiManagementServiceResourceId')[copyIndex('apim')]]"
+        ],
+        "evaluationFrequency": "PT15M",
+        "windowSize": "PT30M",
+        "criteria": {
+          "allOf": [
+            {
+              "threshold": 90,
+              "name": "Metric1",
+              "metricNamespace": "microsoft.apimanagement/service",
+              "metricName": "Capacity",
+              "dimensions": [
+                {
+                  "name": "Location",
+                  "operator": "Include",
+                  "values": [
+                    "*"
+                  ]
+                }
+              ],
+              "operator": "GreaterThan",
+              "timeAggregation": "Average",
+              "criterionType": "StaticThresholdCriterion"
+            }
+          ],
+          "odata.type": "Microsoft.Azure.Monitor.MultipleResourceMultipleMetricCriteria"
+        },
+        "autoMitigate": true,
+        "targetResourceType": "microsoft.apimanagement/service",
+        "actions": [
+          {
+            "actionGroupId": "[resourceId('microsoft.insights/actionGroups', 'chc-monitor-ag')]"
+          }
+        ],
+        "enabled": true
+      }
+    }    
+  ]
+}
