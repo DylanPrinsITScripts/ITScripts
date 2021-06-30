@@ -89,11 +89,17 @@
           "cba31ac4-2fac-427c-bac4-e4f385f492ee"
         ],
         "ingressApplicationGateway": {
-              "enabled": false,
-              "config": {
-                  "applicationGatewayId": "/subscriptions/372ff4eb-841d-4efa-af11-f057c9460c0d/resourceGroups/RG-Dylan/providers/Microsoft.Network/applicationGateways/dylanGateway2"
-              }
+          "enabled": true,
+          "config": {
+            "applicationGatewayId": "/subscriptions/372ff4eb-841d-4efa-af11-f057c9460c0d/resourceGroups/RG-Dylan/providers/Microsoft.Network/applicationGateways/dylanGateway2"
           }
+        }
+      }
+    },
+    "podIdentityProfile": {
+      "value": {
+        "enabled": true,
+        "allowNetworkPluginKubenet": false
       }
     },
     "apiServerAccessProfile": {

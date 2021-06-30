@@ -1,0 +1,68 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-08-01/managementGroupDeploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "name": {
+            "type": "string",
+            "metadata": {
+                "description": "The name of the Azure Policy"
+            }
+        },
+        "displayName": {
+            "type": "string",
+            "metadata": {
+                "description": "The display name of the Azure Policy"
+            }
+        },
+        "description": {
+            "type": "string",
+            "metadata": {
+                "description": "The description of the Azure Policy"
+            },
+            "defaultValue": ""
+        },
+        "policyRule": {
+            "type": "object",
+            "metadata": {
+                "description": "Object describing the policy rule"
+            }
+        },
+        "policyParameters": {
+            "type": "object",
+            "metadata": {
+                "description": "Object containing the parameters for the Azure Policy"
+            },
+            "defaultValue": {}
+        },
+        "policyMetadata": {
+            "type": "object",
+            "metadata": {
+                "description": "Metadata of the policy objects"
+            },
+            "defaultValue": {}
+        }
+    },
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.Authorization/policyDefinitions",
+            "name": "[parameters('name')]",
+            "apiVersion": "2020-09-01",
+            "properties": {
+                "policyType": "Custom",
+                "displayName": "[parameters('displayName')]",
+                "description": "[parameters('description')]",
+                "mode": "all",
+                "parameters": "[parameters('policyParameters')]",
+                "policyRule": "[parameters('policyRule')]",
+                "metadata": "[parameters('policyMetadata')]"
+            }
+        }
+    ],
+    "outputs": {
+        "azurePolicyResourceId": {
+            "type": "string",
+            "value": "[resourceId('Microsoft.Authorization/policyDefinitions', parameters('name'))]"
+        }
+    }
+}

@@ -129,6 +129,13 @@
             },
             "defaultValue": {}
         },
+        "podIdentityProfile": {
+            "type": "object",
+            "metadata": {
+                "description": "Pod Identity"
+            },
+            "defaultValue": {}
+        },
         "apiServerAccessProfile": {
             "type": "object",
             "metadata": {
@@ -194,6 +201,7 @@
                 "linuxProfile": "[if(empty(parameters('linuxProfile')), json('null'), parameters('linuxProfile'))]",
                 "windowsProfile": "[if(empty(parameters('windowsProfile')), json('null'), parameters('windowsProfile'))]",
                 "addonProfiles": "[variables('addonProfiles')]",
+                "podIdentityProfile": "[parameters('podIdentityProfile')]",
                 "nodeResourceGroup": "[parameters('nodeResourceGroup')]",
                 "enableRBAC": "[parameters('enableRBAC')]",
                 "enablePodSecurityPolicy": "[parameters('enablePodSecurityPolicy')]",
